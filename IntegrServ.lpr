@@ -1,4 +1,4 @@
-program RestApi;
+program IntegrServ;
 
 {$mode objfpc}{$H+}
 {$APPTYPE CONSOLE}
@@ -393,7 +393,7 @@ begin
   MimeTypesFile := ExtractFileDir(Application.ExeName) + PathDelim + 'mime.types';
   RegisterFileLocation('app', 'public_html');
 
-  Application.Title := 'Gate RestAPI';
+  Application.Title := 'Gate IntegrServ';
   Application.Port := API_Port;
   Application.Threaded := True;
   Application.Initialize;
