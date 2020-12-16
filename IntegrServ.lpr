@@ -3,24 +3,15 @@ program IntegrServ;
 {$mode objfpc}{$H+}
 {$APPTYPE CONSOLE}
 
-uses {$IFDEF UNIX} {$IFDEF UseCThreads}
-  cthreads, {$ENDIF}
-  cmem, {$ENDIF}
-  SysUtils,
-  StrUtils,
-  Classes,
-  IniFiles,
-  fphttpapp,
-  httpdefs,
-  httproute,
-  fpwebfile,
-  fpjson,
-  jsonparser,
-  jsonscanner,
-  base64,
-  odbcconn,
-  SQLDB,
-  DB;
+uses
+{$IFDEF UNIX}
+  {$IFDEF UseCThreads}
+  cthreads,
+  {$ENDIF}
+  cmem,
+{$ENDIF}
+  SysUtils, StrUtils, Classes, IniFiles, fphttpapp, httpdefs, httproute, fpwebfile, fpjson, jsonparser, jsonscanner,
+  base64, odbcconn, SQLDB, DB;
 
 var
   API_Auth: Boolean = True;
@@ -59,13 +50,63 @@ var
     AResponse.SendContent;
   end;
 
+  procedure GetUsersCount(ARequest: TRequest; AResponse: TResponse);
+  var
+    JSON: TJSONObject;
+    Connection: TODBCConnection;
+    Transaction: TSQLTransaction;
+    Query: TSQLQuery;
+    HttpCode: Integer;
+  begin
+    JSON := TJSONObject.Create;
+    try
+      ValidateRequest(ARequest);
+      Connection := TODBCConnection.Create(nil);
+      Connection.Driver := ODBC_Driver;
+      Connection.DatabaseName := ODBC_DatabaseName;
+      Connection.UserName := ODBC_UserName;
+      Connection.Password := ODBC_Password;
+      Connection.Connected := True;
+      Transaction := TSQLTransaction.Create(nil);
+      Transaction.DataBase := Connection;
+      Transaction.Action := caCommit;
+      Transaction.Active := True;
+      Query := TSQLQuery.Create(nil);
+      Query.DataBase := Connection;
+      Query.UsePrimaryKeyAsKey := False;
+      Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users';
+      Query.ExecSQL;
+      Query.Open;
+      Query.First;
+      JSON.Add('success', True);
+      JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
+      Query.Close;
+      HttpCode := 200;
+    except
+      on E: Exception do
+      begin
+        JSON.Add('success', False);
+        JSON.Add('reason', E.Message);
+        Writeln(E.Message);
+        HttpCode := 401;
+      end;
+    end;
+    if Assigned(Connection) then
+      Connection.Free;
+    if Assigned(Transaction) then
+      Transaction.Free;
+    if Assigned(Query) then
+      Query.Free;
+    JSONResponse(AResponse, JSON, HttpCode);
+    JSON.Free;
+  end;
+
   procedure User_GetAll(ARequest: TRequest; AResponse: TResponse);
   var
     JSON: TJSONObject;
     Connection: TODBCConnection;
     Transaction: TSQLTransaction;
     Query: TSQLQuery;
-    bCount: Boolean;
     jArray: TJSONArray;
     jObject: TJSONObject;
     HttpCode: Integer;
@@ -74,7 +115,6 @@ var
     JSON := TJSONObject.Create;
     try
       ValidateRequest(ARequest);
-      bCount := ARequest.QueryFields.IndexOf('count') > -1;
       Connection := TODBCConnection.Create(nil);
       Connection.Driver := ODBC_Driver;
       Connection.DatabaseName := ODBC_DatabaseName;
@@ -92,10 +132,7 @@ var
       Query := TSQLQuery.Create(nil);
       Query.DataBase := Connection;
       Query.UsePrimaryKeyAsKey := False;
-      if bCount then
-        Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users'
-      else
-        Query.SQL.Text := 'SELECT * FROM Users';
+      Query.SQL.Text := 'SELECT * FROM Users';
       Query.ExecSQL;
       Query.Open;
       JSON.Add('success', True);
@@ -104,62 +141,60 @@ var
       //Query.GetFieldNames(Fields);
       //Writeln(Fields.CommaText);
       //Fields.Free;
-      if bCount then
-      begin
-        Query.First;
-        JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
-      end
-      else
-      begin
-        jArray := TJSONArray.Create;
+      jArray := TJSONArray.Create;
+      try
         while not Query.EOF do
         begin
           jObject := TJSONObject.Create;
-          jObject.Add('id', Query.FieldByName('UserPtr').AsLargeInt); // Идентификатор пользователя
-          jObject.Add('number', Query.FieldByName('Number').AsUTF8String); // Номер карты
-          jObject.Add('lastName', Query.FieldByName('LastName').AsUTF8String); // Фамилия
-          jObject.Add('firstName', Query.FieldByName('FirstName').AsUTF8String);// Имя
-          jObject.Add('fatherName', Query.FieldByName('FatherName').AsUTF8String); // Отчество
-          jObject.Add('groupId', Query.FieldByName('GroupPtr').AsLargeInt); // Идентификатор группы
-          jArray.Add(jObject.Clone);
-          FreeAndNil(jObject);
+          try
+            jObject.Add('id', Query.FieldByName('UserPtr').AsLargeInt); // Идентификатор пользователя
+            jObject.Add('number', Query.FieldByName('Number').AsUTF8String); // Номер карты
+            jObject.Add('lastName', Query.FieldByName('LastName').AsUTF8String); // Фамилия
+            jObject.Add('firstName', Query.FieldByName('FirstName').AsUTF8String);// Имя
+            jObject.Add('fatherName', Query.FieldByName('FatherName').AsUTF8String); // Отчество
+            jObject.Add('groupId', Query.FieldByName('GroupPtr').AsLargeInt); // Идентификатор группы
+            jArray.Add(jObject.Clone);
+          finally
+            FreeAndNil(jObject);
+          end;
           Query.Next;
         end;
         JSON.Add('result', jArray.Clone);
+      finally
         FreeAndNil(jArray);
       end;
       Query.Close;
-      Connection.Free;
-      Transaction.Free;
-      Query.Free;
       HttpCode := 200;
     except
       on E: Exception do
       begin
         JSON.Add('success', False);
         JSON.Add('reason', E.Message);
+        Writeln(E.Message);
         HttpCode := 401;
       end;
     end;
+    if Assigned(Connection) then
+      Connection.Free;
+    if Assigned(Transaction) then
+      Transaction.Free;
+    if Assigned(Query) then
+      Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
-    FreeAndNil(JSON);
+    JSON.Free;
   end;
 
-  procedure Group_GetAll(ARequest: TRequest; AResponse: TResponse);
+  procedure GetGroupsCount(ARequest: TRequest; AResponse: TResponse);
   var
     JSON: TJSONObject;
     Connection: TODBCConnection;
     Transaction: TSQLTransaction;
     Query: TSQLQuery;
-    bCount: Boolean;
-    jArray: TJSONArray;
-    jObject: TJSONObject;
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
     try
       ValidateRequest(ARequest);
-      bCount := ARequest.QueryFields.IndexOf('count') > -1;
       Connection := TODBCConnection.Create(nil);
       Connection.Driver := ODBC_Driver;
       Connection.DatabaseName := ODBC_DatabaseName;
@@ -173,71 +208,124 @@ var
       Query := TSQLQuery.Create(nil);
       Query.DataBase := Connection;
       Query.UsePrimaryKeyAsKey := False;
-      if bCount then
-        Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups'
-      else
-        Query.SQL.Text := 'SELECT * FROM Groups';
+      Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups';
       Query.ExecSQL;
       Query.Open;
+      Query.First;
       JSON.Add('success', True);
-      if bCount then
-      begin
-        Query.First;
-        JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
-      end
-      else
-      begin
-        jArray := TJSONArray.Create;
-        while not Query.EOF do
-        begin
-          jObject := TJSONObject.Create;
-          jObject.Add('id', Query.FieldByName('GroupPtr').AsLargeInt); // Идентификатор группы
-          jObject.Add('name', Query.FieldByName('Name').AsUTF8String); // Имя группы
-          jArray.Add(jObject.Clone);
-          FreeAndNil(jObject);
-          Query.Next;
-        end;
-        JSON.Add('result', jArray.Clone);
-        FreeAndNil(jArray);
-      end;
+      JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
       Query.Close;
-      Connection.Free;
-      Transaction.Free;
-      Query.Free;
       HttpCode := 200;
     except
       on E: Exception do
       begin
         JSON.Add('success', False);
         JSON.Add('reason', E.Message);
+        Writeln(E.Message);
         HttpCode := 401;
       end;
     end;
+    if Assigned(Connection) then
+      Connection.Free;
+    if Assigned(Transaction) then
+      Transaction.Free;
+    if Assigned(Query) then
+      Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
-    FreeAndNil(JSON);
+    JSON.Free;
   end;
 
-  procedure Group_Create(ARequest: TRequest; AResponse: TResponse);
+  procedure Group_GetAll(ARequest: TRequest; AResponse: TResponse);
   var
     JSON: TJSONObject;
-    Name: String;
     Connection: TODBCConnection;
     Transaction: TSQLTransaction;
     Query: TSQLQuery;
-    jParser: TJSONParser;
+    jArray: TJSONArray;
     jObject: TJSONObject;
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
     try
       ValidateRequest(ARequest);
-      //if ARequest.ContentType <> 'application/json' then
-      //  raise Exception.Create('ContentType must be "application/json"');
+      Connection := TODBCConnection.Create(nil);
+      Connection.Driver := ODBC_Driver;
+      Connection.DatabaseName := ODBC_DatabaseName;
+      Connection.UserName := ODBC_UserName;
+      Connection.Password := ODBC_Password;
+      Connection.Connected := True;
+      Transaction := TSQLTransaction.Create(nil);
+      Transaction.DataBase := Connection;
+      Transaction.Action := caCommit;
+      Transaction.Active := True;
+      Query := TSQLQuery.Create(nil);
+      Query.DataBase := Connection;
+      Query.UsePrimaryKeyAsKey := False;
+      Query.SQL.Text := 'SELECT * FROM Groups';
+      Query.ExecSQL;
+      Query.Open;
+      JSON.Add('success', True);
+      jArray := TJSONArray.Create;
+      try
+        while not Query.EOF do
+        begin
+          jObject := TJSONObject.Create;
+          try
+            jObject.Add('id', Query.FieldByName('GroupPtr').AsLargeInt); // Идентификатор группы
+            jObject.Add('name', Query.FieldByName('Name').AsUTF8String); // Имя группы
+            jArray.Add(jObject.Clone);
+          finally
+            FreeAndNil(jObject);
+          end;
+          Query.Next;
+        end;
+        JSON.Add('result', jArray.Clone);
+      finally
+        FreeAndNil(jArray);
+      end;
+      Query.Close;
+      HttpCode := 200;
+    except
+      on E: Exception do
+      begin
+        JSON.Add('success', False);
+        JSON.Add('reason', E.Message);
+        Writeln(E.Message);
+        HttpCode := 401;
+      end;
+    end;
+    if Assigned(Connection) then
+      Connection.Free;
+    if Assigned(Transaction) then
+      Transaction.Free;
+    if Assigned(Query) then
+      Query.Free;
+    JSONResponse(AResponse, JSON, HttpCode);
+    JSON.Free;
+  end;
+
+  procedure Group_Create(ARequest: TRequest; AResponse: TResponse);
+  var
+    JSON: TJSONObject;
+    jParser: TJSONParser;
+    jObject: TJSONObject;
+    Name: String;
+    Connection: TODBCConnection;
+    Transaction: TSQLTransaction;
+    Query: TSQLQuery;
+    HttpCode: Integer;
+  begin
+    JSON := TJSONObject.Create;
+    try
+      ValidateRequest(ARequest);
       jParser := TJSONParser.Create(ARequest.Content, DefaultOptions);
-      jObject := jParser.Parse as TJSONObject;
-      Name := jObject.Strings['name'];
-      FreeAndNil(jObject);
-      FreeAndNil(jParser);
+      try
+        jObject := jParser.Parse as TJSONObject;
+        Name := jObject.Strings['name'];
+      finally
+        FreeAndNil(jObject);
+        FreeAndNil(jParser);
+      end;
       if Name = '' then
         raise Exception.Create('Parameter "name" is empty');
       Connection := TODBCConnection.Create(nil);
@@ -253,19 +341,28 @@ var
       Query := TSQLQuery.Create(nil);
       Query.DataBase := Connection;
       Query.UsePrimaryKeyAsKey := False;
+      // Ищем группу по имени
+      Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups WHERE name=:name';
+      Query.Params.ParseSQL(Query.SQL.Text, True);
+      Query.ParamByName('name').Value := Name;
+      Query.ExecSQL;
+      Query.Open;
+      Query.First;
+      if Query.FieldByName('cnt').AsLargeInt > 0 then
+        raise Exception.Create('Group "' + Name + '" is already exists');
+      Query.Close;
+      // Вставляем новую группу
       Query.SQL.Text := 'INSERT INTO Groups (name) VALUES (:name)';
       Query.Params.ParseSQL(Query.SQL.Text, True);
       Query.ParamByName('name').Value := Name;
       Query.ExecSQL;
+      // Получаем идентификатор
       //Query.SQL.Text := 'SELECT @@IDENTITY AS LastID';
       //Query.Open;
       //Query.First;
       //Writeln(Query.FieldByName('LastID').AsLargeInt);
+      //Query.Close;
       JSON.Add('success', True);
-      Query.Close;
-      Connection.Free;
-      Transaction.Free;
-      Query.Free;
       HttpCode := 200;
     except
       on E: Exception do
@@ -276,8 +373,14 @@ var
         HttpCode := 401;
       end;
     end;
+    if Assigned(Connection) then
+      Connection.Free;
+    if Assigned(Transaction) then
+      Transaction.Free;
+    if Assigned(Query) then
+      Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
-    FreeAndNil(JSON);
+    JSON.Free;
   end;
 
   procedure Group_Delete(ARequest: TRequest; AResponse: TResponse);
@@ -327,7 +430,7 @@ var
       end;
     end;
     JSONResponse(AResponse, JSON, HttpCode);
-    FreeAndNil(JSON);
+    JSON.Free;
   end;
 
   procedure CatchAll(ARequest: TRequest; AResponse: TResponse);
@@ -348,6 +451,9 @@ var
 
 var
   IniFileName: String;
+
+{$R *.res}
+
 begin
   // Загружаем настройки
   IniFileName := ChangeFileExt(Application.ExeName, '.ini');
@@ -383,7 +489,9 @@ begin
 
   // Маршруты
   HTTPRouter.RegisterRoute('/catchall', rmAll, @CatchAll, True);
+  HTTPRouter.RegisterRoute('/api/v1/getUsersCount', rmGet, @GetUsersCount);
   HTTPRouter.RegisterRoute('/api/v1/user', rmGet, @User_GetAll);
+  HTTPRouter.RegisterRoute('/api/v1/getGroupsCount', rmGet, @GetGroupsCount);
   HTTPRouter.RegisterRoute('/api/v1/group', rmGet, @Group_GetAll);
   HTTPRouter.RegisterRoute('/api/v1/group', rmPost, @Group_Create);
   HTTPRouter.RegisterRoute('/api/v1/group/:id', rmDelete, @Group_Delete);

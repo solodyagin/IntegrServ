@@ -1,5 +1,5 @@
 # IntegrServ
-Access monitoring and control system "Gate" intergration server
+Access monitoring and control system "Gate" integration server
 
 1. Install Microsoft Access Database Engine 2010 Redistributable (64 bit) (https://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine_X64.exe)
 

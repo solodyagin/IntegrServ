@@ -17,6 +17,14 @@
         <DpiAware Value="True"/>
       </XPManifest>
     </General>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <AutoIncrementBuild Value="True"/>
+      <MinorVersionNr Value="2"/>
+      <BuildNr Value="1"/>
+      <Attributes pvaPreRelease="True"/>
+      <StringTable FileDescription="IntegrServ" ProductName="IntegrServ" ProductVersion="1.0.0.0"/>
+    </VersionInfo>
     <BuildModes>
       <Item Name="Win32-Debug" Default="True"/>
       <Item Name="Win32-Release">
