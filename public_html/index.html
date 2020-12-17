@@ -1,177 +1,325 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-	<meta charset="utf-8">
-	<title>Gate IntegrServ</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<link rel="stylesheet" href="/app/css/bootstrap.min.css">
-	<script src="/app/js/jquery-3.2.1.min.js"></script>
-	<script src="/app/js/popper.min.js"></script>
-	<script src="/app/js/bootstrap.min.js"></script>
-	<script src="/app/js/bootbox.min.js"></script>
-	<script>
-		$(function () {
-			var $username = $('#username'),
-				$password = $('#password'),
-				$results = $('#results');
+	<head>
+		<meta charset="utf-8">
+		<title>Gate IntegrServ</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<link rel="stylesheet" href="/app/css/bootstrap.min.css">
+		<script src="/app/js/jquery-3.2.1.min.js"></script>
+		<script src="/app/js/popper.min.js"></script>
+		<script src="/app/js/bootstrap.min.js"></script>
+		<script src="/app/js/bootbox.min.js"></script>
+		<script>
+			$(function () {
+				var $username = $('#username'),
+					$password = $('#password'),
+					$results = $('#results');
 
-			$.ajaxSetup({
-				beforeSend: function (xhr) {
-					xhr.setRequestHeader('Authorization', 'Basic ' + btoa($username.val() + ':' + $password.val()));
-					$results.empty();
-				},
-				success: function (data) {
-					$results.html(JSON.stringify(data, null, 2));
-				},
-				error: function (jqXHR, exception) {
-					var msg = '';
-					if (jqXHR.status === 0) {
-						msg = 'Not connect.\nVerify Network.';
-					} else if (jqXHR.status == 404) {
-						msg = 'Requested page not found. [404]';
-					} else if (jqXHR.status == 500) {
-						msg = 'Internal Server Error [500].';
-					} else if (exception === 'parsererror') {
-						msg = 'Requested JSON parse failed.';
-					} else if (exception === 'timeout') {
-						msg = 'Time out error.';
-					} else if (exception === 'abort') {
-						msg = 'Ajax request aborted.';
-					} else {
-						msg = 'Uncaught Error.\n' + jqXHR.responseText;
-					}
-					$results.html(msg);
-				},
-				dataType: 'json'
-			});
-		
-			$('.api-button').click(function () {
-				$.ajax({
-					type: 'GET',
-					url: $(this).data('url'),
-				});
-			});
-
-			$('#group_add').click(function () {
-				bootbox.prompt('Добавить группу', function (result) { 
-					if (result) {
-						var data = {name: result};
-						$.ajax({
-							type: 'POST',
-							url: '/api/v1/group',
-							contentType: 'application/json; charset=utf-8',
-							data: JSON.stringify(data),
-						});
-					}
-				});
-			});
-
-			$('#group_delete').click(function () {
-				var $btn = $(this);
-				bootbox.prompt({
-					title: 'Удалить группу',
-					inputType: 'number',
-					callback: function (result) {
-						if (result > 0) {
-							$.ajax({
-								type: 'DELETE',
-								url: '/api/v1/group/' + result,
-							});
+				$.ajaxSetup({
+					beforeSend: function (xhr) {
+						xhr.setRequestHeader('Authorization', 'Basic ' + btoa($username.val() + ':' + $password.val()));
+						$results.empty();
+					},
+					success: function (data) {
+						$results.html(JSON.stringify(data, null, 2));
+					},
+					error: function (jqXHR, exception) {
+						var msg = '';
+						if (jqXHR.status === 0) {
+							msg = 'Not connect.\nVerify Network.';
+						} else if (jqXHR.status == 401) {
+							msg = '401 Unauthorized.';
+						} else if (jqXHR.status == 404) {
+							msg = '404 Not Found.';
+						} else if (jqXHR.status == 500) {
+							msg = '500 Internal Server Error.';
+						} else if (exception === 'parsererror') {
+							msg = 'Requested JSON parse failed.';
+						} else if (exception === 'timeout') {
+							msg = 'Time out error.';
+						} else if (exception === 'abort') {
+							msg = 'Ajax request aborted.';
+						} else {
+							msg = 'Uncaught Error.' 
 						}
-					}
+						if (jqXHR.responseText) msg += "\n" + jqXHR.responseText;
+						$results.html(msg);
+					},
+					dataType: 'json'
+				});
+			
+				$('.api-button').click(function () {
+					$.ajax({
+						type: 'GET',
+						url: $(this).data('url'),
+					});
+				});
+
+				$('#btnGroupGetById').click(function () {
+					bootbox.dialog({
+						title: 'Получить определённую группу',
+						message: $('#form1'),
+						show: false,
+						buttons: {
+							cancel: {
+								label: 'Отмена',
+								className: 'btn-secondary btn-default'
+							},
+							yes: {
+								label: 'Да',
+								className: 'btn-primary',
+								callback: function () {
+									var id = $('#form1_id').val();
+									if (id) {
+										$.ajax({
+											type: 'GET',
+											url: '/api/v1/group/' + id,
+										});
+									}
+								}
+							}
+						}
+					}).on('shown.bs.modal', function () {
+						$('#form1').show(function () {
+							$('#form1_id').focus();
+						});
+					}).on('hide.bs.modal', function () {
+						$('#form1').hide().appendTo('body');
+					}).modal('show');
+				});
+
+				$('#btnGroupAdd').click(function () {
+					bootbox.dialog({
+						title: 'Добавить группу',
+						message: $('#form2'),
+						show: false,
+						buttons: {
+							cancel: {
+								label: 'Отмена',
+								className: 'btn-secondary btn-default'
+							},
+							yes: {
+								label: 'Да',
+								className: 'btn-primary',
+								callback: function () {
+									var n = $('#form2_name').val();
+									if (n) {
+										var d = {name: n};
+										$.ajax({
+											type: 'POST',
+											url: '/api/v1/group',
+											contentType: 'application/json; charset=utf-8',
+											data: JSON.stringify(d),
+										});
+									}
+								}
+							}
+						}
+					}).on('shown.bs.modal', function () {
+						$('#form2').show(function () {
+							$('#form2_name').focus();
+						});
+					}).on('hide.bs.modal', function () {
+						$('#form2').hide().appendTo('body');
+					}).modal('show');
+				});
+
+				$('#btnGroupEdit').click(function () {
+					var $btn = $(this);
+					bootbox.dialog({
+						title: 'Редактировать группу',
+						message: $('#form3'),
+						show: false,
+						buttons: {
+							cancel: {
+								label: 'Отмена',
+								className: 'btn-secondary btn-default'
+							},
+							yes: {
+								label: 'Да',
+								className: 'btn-primary',
+								callback: function () {
+									var id = $('#form3_id').val(),
+										n = $('#form3_name').val();
+									if ((id > 0) && n) {
+										var d = {name: n};
+										$.ajax({
+											type: 'PUT',
+											url: '/api/v1/group/' + id,
+											contentType: 'application/json; charset=utf-8',
+											data: JSON.stringify(d),
+										});
+									}
+								}
+							}
+						}
+					}).on('shown.bs.modal', function () {
+						$('#form3').show(function () {
+							$('#form3_id').focus();
+						});
+					}).on('hide.bs.modal', function () {
+						$('#form3').hide().appendTo('body');
+					}).modal('show');
+				});
+
+				$('#btnGroupDelete').click(function () {
+					var $btn = $(this);
+					bootbox.dialog({
+						title: 'Удалить группу',
+						message: $('#form1'),
+						show: false,
+						buttons: {
+							cancel: {
+								label: 'Отмена',
+								className: 'btn-secondary btn-default'
+							},
+							yes: {
+								label: 'Да',
+								className: 'btn-primary',
+								callback: function () {
+									var id = $('#form1_id').val();
+									if (id > 0) {
+										$.ajax({
+											type: 'DELETE',
+											url: '/api/v1/group/' + id,
+										});
+									}
+								}
+							}
+						}
+					}).on('shown.bs.modal', function () {
+						$('#form1').show(function () {
+							$('#form1_id').focus();
+						});
+					}).on('hide.bs.modal', function () {
+						$('#form1').hide().appendTo('body');
+					}).modal('show');
 				});
 			});
-		});
-	</script>
-</head>
-<body>
-	<div class="container-fluid">
-		<div class="row">
-			<div class="col-6">
-				<div class="card">
-					<div class="card-body">
-						<div class="input-group mb-3">
-							<div class="input-group-prepend col-3 px-0">
-								<span class="input-group-text col-12">Имя пользователя:</span>
-							</div>
-							<input type="text" class="form-control" id="username">
-						</div>
-						<div class="input-group mb-3">
-							<div class="input-group-prepend col-3 px-0">
-								<span class="input-group-text col-12">Пароль:</span>
-							</div>
-							<input type="password" class="form-control" id="password">
-						</div>
-					</div>
-				</div>
-				<div id="accordion">
-					<div class="card">
-						<div class="card-header"><h5><a class="card-link" data-toggle="collapse" href="#collapse1">Пользователи</a></h5></div>
-						<div id="collapse1" class="collapse" data-parent="#accordion">
-							<div class="card-body">
-								<label>Количество пользователей:</label>
-								<div class="input-group mb-3">
-									<div class="input-group-prepend">
-										<button type="button" class="btn btn-outline-primary api-button" data-url="/api/v1/getUsersCount">Выполнить</button>
-									</div>
-									<input type="text" class="form-control" value="GET /api/v1/getUsersCount" readonly>
-								</div>
-								<label>Список пользователей:</label>
-								<div class="input-group mb-3">
-									<div class="input-group-prepend">
-										<button type="button" class="btn btn-outline-primary api-button" data-url="/api/v1/user">Выполнить</button>
-									</div>
-									<input type="text" class="form-control" value="GET /api/v1/user" readonly>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="card">
-						<div class="card-header"><h5><a class="card-link" data-toggle="collapse" href="#collapse2">Группы</a></h5></div>
-						<div id="collapse2" class="collapse" data-parent="#accordion">
-							<div class="card-body">
-								<label>Количество групп:</label>
-								<div class="input-group mb-3">
-									<div class="input-group-prepend">
-										<button type="button" class="btn btn-outline-primary api-button" data-url="/api/v1/getGroupsCount">Выполнить</button>
-									</div>
-									<input type="text" class="form-control" value="GET /api/v1/getGroupsCount" readonly>
-								</div>
-								<label>Список групп:</label>
-								<div class="input-group mb-3">
-									<div class="input-group-prepend">
-										<button type="button" class="btn btn-outline-primary api-button" data-url="/api/v1/group">Выполнить</button>
-									</div>
-									<input type="text" class="form-control" value="GET /api/v1/group" readonly>
-								</div>
-								<label>Добавить группу:</label>
-								<div class="input-group mb-3">
-									<div class="input-group-prepend">
-										<button type="button" class="btn btn-outline-success" id="group_add">Выполнить</button>
-									</div>
-									<input type="text" class="form-control" value="POST /api/v1/group" readonly>
-								</div>
-								<label>Удалить группу:</label>
-								<div class="input-group mb-3">
-									<div class="input-group-prepend">
-										<button type="button" class="btn btn-outline-danger" id="group_delete">Выполнить</button>
-									</div>
-									<input type="text" class="form-control" value="DELETE /api/v1/group" readonly>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+		</script>
+	</head>
+	<body>
+		<form id="form1" style="display: none;">
+			<div class="form-group">
+				<label for="form1_id" class="col-form-label">Идентификатор:</label>
+				<input type="number" class="form-control" id="form1_id">
 			</div>
-			<div class="col-6">
-				<div class="card">
-					<div class="card-header"><h5>Результат</h5></div>
-					<div class="card-body">
-						<pre id="results"></pre>
+		</form>
+		<form id="form2" style="display: none;">
+			<div class="form-group">
+				<label for="form2_name" class="col-form-label">Наименование:</label>
+				<input type="text" class="form-control" id="form2_name">
+			</div>
+		</form>
+		<form id="form3" style="display: none;">
+			<div class="form-group">
+				<label for="form3_id" class="col-form-label">Идентификатор:</label>
+				<input type="number" class="form-control" id="form3_id">
+				<label for="form3_name" class="col-form-label">Наименование:</label>
+				<input type="text" class="form-control" id="form3_name">
+			</div>
+		</form>
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-6">
+					<div class="card">
+						<div class="card-body">
+							<div class="input-group input-group-sm mb-3">
+								<div class="input-group-prepend col-3 px-0">
+									<span class="input-group-text col-12">Имя пользователя:</span>
+								</div>
+								<input type="text" class="form-control" id="username">
+							</div>
+							<div class="input-group input-group-sm mb-3">
+								<div class="input-group-prepend col-3 px-0">
+									<span class="input-group-text col-12">Пароль:</span>
+								</div>
+								<input type="password" class="form-control" id="password">
+							</div>
+						</div>
+					</div>
+					<div id="accordion">
+						<div class="card">
+							<div class="card-header"><h5><a class="card-link" data-toggle="collapse" href="#collapse1">Пользователи</a></h5></div>
+							<div id="collapse1" class="collapse" data-parent="#accordion">
+								<div class="card-body">
+									<label>Получить количество пользователей:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-info api-button" data-url="/api/v1/getUsersCount">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="GET /api/v1/getUsersCount" readonly>
+									</div>
+									<label>Получить список пользователей:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-info api-button" data-url="/api/v1/user">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="GET /api/v1/user" readonly>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="card">
+							<div class="card-header"><h5><a class="card-link" data-toggle="collapse" href="#collapse2">Группы</a></h5></div>
+							<div id="collapse2" class="collapse" data-parent="#accordion">
+								<div class="card-body">
+									<label>Получить количество групп:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-info api-button" data-url="/api/v1/getGroupsCount">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="GET /api/v1/getGroupsCount" readonly>
+									</div>
+									<label>Получить список групп:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-info api-button" data-url="/api/v1/group">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="GET /api/v1/group" readonly>
+									</div>
+									<label>Добавить группу:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-success" id="btnGroupAdd">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="POST /api/v1/group" readonly>
+									</div>
+									<label>Получить определённую группу:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-info" id="btnGroupGetById">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="GET /api/v1/group/:id" readonly>
+									</div>
+									<label>Редактировать группу:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-warning" id="btnGroupEdit">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="PUT /api/v1/group/:id" readonly>
+									</div>
+									<label>Удалить группу:</label>
+									<div class="input-group input-group-sm mb-3">
+										<div class="input-group-prepend">
+											<button type="button" class="btn btn-outline-danger" id="btnGroupDelete">Выполнить</button>
+										</div>
+										<input type="text" class="form-control" value="DELETE /api/v1/group/:id" readonly>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-6">
+					<div class="card">
+						<div class="card-header"><h5>Результаты</h5></div>
+						<div class="card-body">
+							<pre id="results"></pre>
+						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
-</body>
+	</body>
 </html>

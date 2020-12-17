@@ -13,6 +13,17 @@ uses
   SysUtils, StrUtils, Classes, IniFiles, fphttpapp, httpdefs, httproute, fpwebfile, fpjson, jsonparser, jsonscanner,
   base64, odbcconn, SQLDB, DB;
 
+const
+  // Коды ошибок
+  E_NoError = 0;
+  E_NoAuth = 1; // ENoAuthException
+  E_Simple = 2; // ESimpleException
+  E_Unknown = 3; // Exception
+
+type
+  ENoAuthException = class(Exception);
+  ESimpleException = class(Exception);
+
 var
   API_Auth: Boolean = True;
   API_UserName: String = 'admin';
@@ -23,6 +34,25 @@ var
   ODBC_UserName: String = 'master';
   ODBC_Password: String = 'masterio0';
 
+  procedure CreateConnection(var Connection: TODBCConnection; var Transaction: TSQLTransaction; var Query: TSQLQuery);
+  begin
+    Connection := TODBCConnection.Create(nil);
+    Connection.Driver := ODBC_Driver;
+    Connection.DatabaseName := ODBC_DatabaseName;
+    Connection.UserName := ODBC_UserName;
+    Connection.Password := ODBC_Password;
+    //Connection.Params.Add('Locale Identifier=1251');
+    //Connection.Params.Add('ExtendedAnsiSQL=1');
+    //Connection.Params.Add('CHARSET=ansi');
+    //Connection.KeepConnection := True;
+    Transaction := TSQLTransaction.Create(nil);
+    Transaction.DataBase := Connection;
+    Transaction.Action := caCommit;
+    Query := TSQLQuery.Create(nil);
+    Query.DataBase := Connection;
+    Query.UsePrimaryKeyAsKey := False;
+  end;
+
   procedure ValidateRequest(ARequest: TRequest);
   var
     headerValue, b64decoded, username, password: String;
@@ -31,14 +61,14 @@ var
       Exit;
     headerValue := ARequest.Authorization;
     if Length(headerValue) = 0 then
-      raise Exception.Create('This endpoint requires authentication');
+      raise ENoAuthException.Create('This endpoint requires authentication');
     if ExtractWord(1, headerValue, [' ']) <> 'Basic' then
-      raise Exception.Create('Only Basic Authentication is supported');
+      raise ENoAuthException.Create('Only Basic Authentication is supported');
     b64decoded := DecodeStringBase64(ExtractWord(2, headerValue, [' ']));
     username := ExtractWord(1, b64decoded, [':']);
     password := ExtractWord(2, b64decoded, [':']);
     if (username <> API_UserName) or (password <> API_Password) then
-      raise Exception.Create('Invalid API credentials');
+      raise ENoAuthException.Create('Invalid API credentials');
   end;
 
   procedure JSONResponse(AResponse: TResponse; JSON: TJSONObject; HttpCode: Integer);
@@ -59,44 +89,39 @@ var
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
     try
       ValidateRequest(ARequest);
-      Connection := TODBCConnection.Create(nil);
-      Connection.Driver := ODBC_Driver;
-      Connection.DatabaseName := ODBC_DatabaseName;
-      Connection.UserName := ODBC_UserName;
-      Connection.Password := ODBC_Password;
       Connection.Connected := True;
-      Transaction := TSQLTransaction.Create(nil);
-      Transaction.DataBase := Connection;
-      Transaction.Action := caCommit;
       Transaction.Active := True;
-      Query := TSQLQuery.Create(nil);
-      Query.DataBase := Connection;
-      Query.UsePrimaryKeyAsKey := False;
       Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users';
       Query.ExecSQL;
       Query.Open;
       Query.First;
-      JSON.Add('success', True);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
       JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
-      Query.Close;
       HttpCode := 200;
     except
-      on E: Exception do
+      on E: ENoAuthException do
       begin
-        JSON.Add('success', False);
-        JSON.Add('reason', E.Message);
-        Writeln(E.Message);
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
         HttpCode := 401;
       end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
     end;
-    if Assigned(Connection) then
-      Connection.Free;
-    if Assigned(Transaction) then
-      Transaction.Free;
-    if Assigned(Query) then
-      Query.Free;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
     JSON.Free;
   end;
@@ -113,29 +138,16 @@ var
     //Fields: TStringList;
   begin
     JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
     try
       ValidateRequest(ARequest);
-      Connection := TODBCConnection.Create(nil);
-      Connection.Driver := ODBC_Driver;
-      Connection.DatabaseName := ODBC_DatabaseName;
-      Connection.UserName := ODBC_UserName;
-      Connection.Password := ODBC_Password;
-      //Connection.Params.Add('Locale Identifier=1251');
-      //Connection.Params.Add('ExtendedAnsiSQL=1');
-      //Connection.Params.Add('CHARSET=ansi');
       Connection.Connected := True;
-      //Connection.KeepConnection := True;
-      Transaction := TSQLTransaction.Create(nil);
-      Transaction.DataBase := Connection;
-      Transaction.Action := caCommit;
       Transaction.Active := True;
-      Query := TSQLQuery.Create(nil);
-      Query.DataBase := Connection;
-      Query.UsePrimaryKeyAsKey := False;
       Query.SQL.Text := 'SELECT * FROM Users';
       Query.ExecSQL;
       Query.Open;
-      JSON.Add('success', True);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
       // Поля таблицы
       //Fields := TStringList.Create;
       //Query.GetFieldNames(Fields);
@@ -163,23 +175,27 @@ var
       finally
         FreeAndNil(jArray);
       end;
-      Query.Close;
       HttpCode := 200;
     except
-      on E: Exception do
+      on E: ENoAuthException do
       begin
-        JSON.Add('success', False);
-        JSON.Add('reason', E.Message);
-        Writeln(E.Message);
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
         HttpCode := 401;
       end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
     end;
-    if Assigned(Connection) then
-      Connection.Free;
-    if Assigned(Transaction) then
-      Transaction.Free;
-    if Assigned(Query) then
-      Query.Free;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
     JSON.Free;
   end;
@@ -193,44 +209,39 @@ var
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
     try
       ValidateRequest(ARequest);
-      Connection := TODBCConnection.Create(nil);
-      Connection.Driver := ODBC_Driver;
-      Connection.DatabaseName := ODBC_DatabaseName;
-      Connection.UserName := ODBC_UserName;
-      Connection.Password := ODBC_Password;
       Connection.Connected := True;
-      Transaction := TSQLTransaction.Create(nil);
-      Transaction.DataBase := Connection;
-      Transaction.Action := caCommit;
       Transaction.Active := True;
-      Query := TSQLQuery.Create(nil);
-      Query.DataBase := Connection;
-      Query.UsePrimaryKeyAsKey := False;
       Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups';
       Query.ExecSQL;
       Query.Open;
       Query.First;
-      JSON.Add('success', True);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
       JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
-      Query.Close;
       HttpCode := 200;
     except
-      on E: Exception do
+      on E: ENoAuthException do
       begin
-        JSON.Add('success', False);
-        JSON.Add('reason', E.Message);
-        Writeln(E.Message);
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
         HttpCode := 401;
       end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
     end;
-    if Assigned(Connection) then
-      Connection.Free;
-    if Assigned(Transaction) then
-      Transaction.Free;
-    if Assigned(Query) then
-      Query.Free;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
     JSON.Free;
   end;
@@ -246,25 +257,16 @@ var
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
     try
       ValidateRequest(ARequest);
-      Connection := TODBCConnection.Create(nil);
-      Connection.Driver := ODBC_Driver;
-      Connection.DatabaseName := ODBC_DatabaseName;
-      Connection.UserName := ODBC_UserName;
-      Connection.Password := ODBC_Password;
       Connection.Connected := True;
-      Transaction := TSQLTransaction.Create(nil);
-      Transaction.DataBase := Connection;
-      Transaction.Action := caCommit;
       Transaction.Active := True;
-      Query := TSQLQuery.Create(nil);
-      Query.DataBase := Connection;
-      Query.UsePrimaryKeyAsKey := False;
       Query.SQL.Text := 'SELECT * FROM Groups';
       Query.ExecSQL;
       Query.Open;
-      JSON.Add('success', True);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
       jArray := TJSONArray.Create;
       try
         while not Query.EOF do
@@ -283,23 +285,27 @@ var
       finally
         FreeAndNil(jArray);
       end;
-      Query.Close;
       HttpCode := 200;
     except
-      on E: Exception do
+      on E: ENoAuthException do
       begin
-        JSON.Add('success', False);
-        JSON.Add('reason', E.Message);
-        Writeln(E.Message);
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
         HttpCode := 401;
       end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
     end;
-    if Assigned(Connection) then
-      Connection.Free;
-    if Assigned(Transaction) then
-      Transaction.Free;
-    if Assigned(Query) then
-      Query.Free;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
     JSON.Free;
   end;
@@ -316,6 +322,7 @@ var
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
     try
       ValidateRequest(ARequest);
       jParser := TJSONParser.Create(ARequest.Content, DefaultOptions);
@@ -327,20 +334,9 @@ var
         FreeAndNil(jParser);
       end;
       if Name = '' then
-        raise Exception.Create('Parameter "name" is empty');
-      Connection := TODBCConnection.Create(nil);
-      Connection.Driver := ODBC_Driver;
-      Connection.DatabaseName := ODBC_DatabaseName;
-      Connection.UserName := ODBC_UserName;
-      Connection.Password := ODBC_Password;
+        raise ESimpleException.Create('Parameter "name" is empty');
       Connection.Connected := True;
-      Transaction := TSQLTransaction.Create(nil);
-      Transaction.DataBase := Connection;
-      Transaction.Action := caCommit;
       Transaction.Active := True;
-      Query := TSQLQuery.Create(nil);
-      Query.DataBase := Connection;
-      Query.UsePrimaryKeyAsKey := False;
       // Ищем группу по имени
       Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups WHERE name=:name';
       Query.Params.ParseSQL(Query.SQL.Text, True);
@@ -349,7 +345,7 @@ var
       Query.Open;
       Query.First;
       if Query.FieldByName('cnt').AsLargeInt > 0 then
-        raise Exception.Create('Group "' + Name + '" is already exists');
+        raise ESimpleException.CreateFmt('Group "%s" is already exists', [Name]);
       Query.Close;
       // Вставляем новую группу
       Query.SQL.Text := 'INSERT INTO Groups (name) VALUES (:name)';
@@ -362,23 +358,179 @@ var
       //Query.First;
       //Writeln(Query.FieldByName('LastID').AsLargeInt);
       //Query.Close;
-      JSON.Add('success', True);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
+      JSON.Add('result', '');
       HttpCode := 200;
     except
-      on E: Exception do
+      on E: ENoAuthException do
       begin
-        JSON.Add('success', False);
-        JSON.Add('reason', E.Message);
-        Writeln(E.Message);
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
         HttpCode := 401;
       end;
+      on E: ESimpleException do
+      begin
+        JSON.Add('errNo', E_Simple);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 200;
+      end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
     end;
-    if Assigned(Connection) then
-      Connection.Free;
-    if Assigned(Transaction) then
-      Transaction.Free;
-    if Assigned(Query) then
-      Query.Free;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
+    JSONResponse(AResponse, JSON, HttpCode);
+    JSON.Free;
+  end;
+
+  procedure Group_Read(ARequest: TRequest; AResponse: TResponse);
+  var
+    JSON: TJSONObject;
+    Connection: TODBCConnection;
+    Transaction: TSQLTransaction;
+    Query: TSQLQuery;
+    Id: String;
+    jObject: TJSONObject;
+    HttpCode: Integer;
+  begin
+    JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
+    try
+      ValidateRequest(ARequest);
+      Id := ARequest.RouteParams['id'];
+      if Id = '' then
+        raise ESimpleException.Create('Parameter "id" is empty');
+      Connection.Connected := True;
+      Transaction.Active := True;
+      Query.SQL.Text := 'SELECT * FROM Groups WHERE GroupPtr=:id';
+      Query.Params.ParseSQL(Query.SQL.Text, True);
+      Query.ParamByName('id').Value := Id;
+      Query.ExecSQL;
+      Query.Open;
+      if Query.EOF then
+        raise ESimpleException.CreateFmt('Group "%s" is not exists', [Id]);
+      Query.First;
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
+      jObject := TJSONObject.Create;
+      try
+        jObject.Add('id', Query.FieldByName('GroupPtr').AsLargeInt); // Идентификатор группы
+        jObject.Add('name', Query.FieldByName('Name').AsUTF8String); // Имя группы
+        JSON.Add('result', jObject.Clone);
+      finally
+        FreeAndNil(jObject);
+      end;
+      HttpCode := 200;
+    except
+      on E: ENoAuthException do
+      begin
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 401;
+      end;
+      on E: ESimpleException do
+      begin
+        JSON.Add('errNo', E_Simple);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 200;
+      end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
+    end;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
+    JSONResponse(AResponse, JSON, HttpCode);
+    JSON.Free;
+  end;
+
+  procedure Group_Update(ARequest: TRequest; AResponse: TResponse);
+  var
+    JSON: TJSONObject;
+    Connection: TODBCConnection;
+    Transaction: TSQLTransaction;
+    Query: TSQLQuery;
+    Id: String;
+    jParser: TJSONParser;
+    jObject: TJSONObject;
+    Name: String;
+    HttpCode: Integer;
+  begin
+    JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
+    try
+      ValidateRequest(ARequest);
+      Id := ARequest.RouteParams['id'];
+      if Id = '' then
+        raise ESimpleException.Create('Parameter "id" is empty');
+      jParser := TJSONParser.Create(ARequest.Content, DefaultOptions);
+      try
+        jObject := jParser.Parse as TJSONObject;
+        Name := jObject.Strings['name'];
+      finally
+        FreeAndNil(jObject);
+        FreeAndNil(jParser);
+      end;
+      if Name = '' then
+        raise ESimpleException.Create('Parameter "name" is empty');
+      Connection.Connected := True;
+      Transaction.Active := True;
+      Query.SQL.Text := 'UPDATE Groups SET Name=:name WHERE GroupPtr=:id';
+      Query.Params.ParseSQL(Query.SQL.Text, True);
+      Query.ParamByName('name').Value := Name;
+      Query.ParamByName('id').Value := Id;
+      Query.ExecSQL;
+      if Query.RowsAffected = 0 then
+        raise ESimpleException.CreateFmt('Group "%s" is not exists', [Id]);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
+      JSON.Add('result', '');
+      HttpCode := 200;
+    except
+      on E: ENoAuthException do
+      begin
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 401;
+      end;
+      on E: ESimpleException do
+      begin
+        JSON.Add('errNo', E_Simple);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 200;
+      end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
+    end;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
     JSON.Free;
   end;
@@ -386,49 +538,58 @@ var
   procedure Group_Delete(ARequest: TRequest; AResponse: TResponse);
   var
     JSON: TJSONObject;
-    ID: String;
+    Id: String;
     Connection: TODBCConnection;
     Transaction: TSQLTransaction;
     Query: TSQLQuery;
     HttpCode: Integer;
   begin
     JSON := TJSONObject.Create;
+    CreateConnection(Connection, Transaction, Query);
     try
       ValidateRequest(ARequest);
-      ID := ARequest.RouteParams['id'];
-      if ID = '' then
-        raise Exception.Create('Parameter "id" is empty');
-      Connection := TODBCConnection.Create(nil);
-      Connection.Driver := ODBC_Driver;
-      Connection.DatabaseName := ODBC_DatabaseName;
-      Connection.UserName := ODBC_UserName;
-      Connection.Password := ODBC_Password;
+      Id := ARequest.RouteParams['id'];
+      if Id = '' then
+        raise ESimpleException.Create('Parameter "id" is empty');
       Connection.Connected := True;
-      Transaction := TSQLTransaction.Create(nil);
-      Transaction.DataBase := Connection;
-      Transaction.Action := caCommit;
       Transaction.Active := True;
-      Query := TSQLQuery.Create(nil);
-      Query.DataBase := Connection;
-      Query.UsePrimaryKeyAsKey := False;
       Query.SQL.Text := 'DELETE FROM Groups WHERE GroupPtr=:id';
       Query.Params.ParseSQL(Query.SQL.Text, True);
-      Query.ParamByName('id').Value := ID;
+      Query.ParamByName('id').Value := Id;
       Query.ExecSQL;
-      JSON.Add('success', True);
-      Connection.Free;
-      Transaction.Free;
-      Query.Free;
+      if Query.RowsAffected = 0 then
+        raise ESimpleException.CreateFmt('Group "%s" is not exists', [Id]);
+      JSON.Add('errNo', E_NoError);
+      JSON.Add('errStr', '');
+      JSON.Add('result', '');
       HttpCode := 200;
     except
-      on E: Exception do
+      on E: ENoAuthException do
       begin
-        JSON.Add('success', False);
-        JSON.Add('reason', E.Message);
-        Writeln(E.Message);
+        JSON.Add('errNo', E_NoAuth);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
         HttpCode := 401;
       end;
+      on E: ESimpleException do
+      begin
+        JSON.Add('errNo', E_Simple);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 200;
+      end;
+      on E: Exception do
+      begin
+        JSON.Add('errNo', E_Unknown);
+        JSON.Add('errStr', E.Message);
+        JSON.Add('result', '');
+        HttpCode := 500;
+        Writeln(E.Message);
+      end;
     end;
+    Connection.Free;
+    Transaction.Free;
+    Query.Free;
     JSONResponse(AResponse, JSON, HttpCode);
     JSON.Free;
   end;
@@ -489,12 +650,14 @@ begin
 
   // Маршруты
   HTTPRouter.RegisterRoute('/catchall', rmAll, @CatchAll, True);
-  HTTPRouter.RegisterRoute('/api/v1/getUsersCount', rmGet, @GetUsersCount);
-  HTTPRouter.RegisterRoute('/api/v1/user', rmGet, @User_GetAll);
-  HTTPRouter.RegisterRoute('/api/v1/getGroupsCount', rmGet, @GetGroupsCount);
-  HTTPRouter.RegisterRoute('/api/v1/group', rmGet, @Group_GetAll);
-  HTTPRouter.RegisterRoute('/api/v1/group', rmPost, @Group_Create);
-  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmDelete, @Group_Delete);
+  HTTPRouter.RegisterRoute('/api/v1/getUsersCount', rmGet, @GetUsersCount); // Количество пользователей
+  HTTPRouter.RegisterRoute('/api/v1/user', rmGet, @User_GetAll); // Все пользователи
+  HTTPRouter.RegisterRoute('/api/v1/getGroupsCount', rmGet, @GetGroupsCount); // Количество групп
+  HTTPRouter.RegisterRoute('/api/v1/group', rmGet, @Group_GetAll); // Все группы
+  HTTPRouter.RegisterRoute('/api/v1/group', rmPost, @Group_Create); // Создание группы
+  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmGet, @Group_Read); // Получение группы
+  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmPut, @Group_Update); // Редактирование группы
+  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmDelete, @Group_Delete); // Удаление группы
 
   // Статика
   HTTPRouter.RegisterRoute('/', @ReRouteRoot);
