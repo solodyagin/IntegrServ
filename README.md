@@ -12,4 +12,3 @@ Access monitoring and control system "Gate" integration server
 4. Edit IntegrServ.ini and run IntegrServ.exe
 
 5. Open in browser http://localhost:9080/app/index.html for test the program
-![image3](https://user-images.githubusercontent.com/4740535/102287386-65537f00-3f4b-11eb-8e54-bf8115934958.png)
