@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Gate Integration Server",
+    "title": "Gate IntegrServ",
     "description": "Gate Integration Server API",
     "contact": {
       "email": "admin@tenrok.ru"
@@ -26,11 +26,11 @@
   "tags": [
     {
       "name": "group",
-      "description": "Operations about group"
+      "description": "Операции с группами"
     },
     {
       "name": "user",
-      "description": "Operations about user"
+      "description": "Операции с пользователями"
     }
   ],
   "paths": {
@@ -39,14 +39,14 @@
         "tags": [
           "group"
         ],
-        "summary": "Searches group",
-        "description": "By passing in the appropriate options, you can search for\navailable group in the system\n",
+        "summary": "Поиск групп",
+        "description": "Вы можете искать группы, указав соответствующие параметры",
         "operationId": "searchGroup",
         "parameters": [
           {
             "name": "searchString",
             "in": "query",
-            "description": "pass an optional search string for looking up group",
+            "description": "Фильтр для поиска групп",
             "required": false,
             "style": "form",
             "explode": true,
@@ -57,7 +57,7 @@
           {
             "name": "skip",
             "in": "query",
-            "description": "number of records to skip for pagination",
+            "description": "Количество записей, которые нужно пропустить для разбивки на страницы",
             "required": false,
             "style": "form",
             "explode": true,
@@ -70,7 +70,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "maximum number of records to return",
+            "description": "Максимальное количество возвращаемых записей",
             "required": false,
             "style": "form",
             "explode": true,
@@ -84,20 +84,44 @@
         ],
         "responses": {
           "200": {
-            "description": "search results matching criteria",
+            "description": "Результаты поиска, соответствующие критериям",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Group"
-                  }
+                  "$ref": "#/components/schemas/RespGroupArray"
                 }
               }
             }
           },
           "400": {
-            "description": "bad input parameter"
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -105,27 +129,35 @@
         "tags": [
           "group"
         ],
-        "summary": "Create group",
+        "summary": "Создание группы",
         "operationId": "createGroup",
         "requestBody": {
-          "description": "Created group object",
+          "description": "Создаваемый объект группы",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Group"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
-            "description": "group created"
+            "description": "Группа создана"
           },
           "400": {
-            "description": "invalid input, object invalid"
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "an existing group already exists"
+            "description": "Группа уже существует"
           }
         }
       }
@@ -135,13 +167,13 @@
         "tags": [
           "group"
         ],
-        "summary": "Find group by ID",
+        "summary": "Поиск группы по идентификатору",
         "operationId": "getGroupById",
         "parameters": [
           {
             "name": "groupId",
             "in": "path",
-            "description": "ID of group to return",
+            "description": "Идентификатор возвращаемой группы",
             "required": true,
             "style": "simple",
             "explode": false,
@@ -153,22 +185,34 @@
         ],
         "responses": {
           "200": {
-            "description": "successful operation",
+            "description": "Удачная операция",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Group"
+                  "$ref": "#/components/schemas/RespGroup"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid group supplied",
-            "content": {}
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Group not found",
-            "content": {}
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -176,13 +220,13 @@
         "tags": [
           "group"
         ],
-        "summary": "Updated group",
+        "summary": "Обновление группы",
         "operationId": "updateGroup",
         "parameters": [
           {
             "name": "groupId",
             "in": "path",
-            "description": "ID that need to be updated",
+            "description": "Идендентификатор обновляемой группы",
             "required": true,
             "style": "simple",
             "explode": false,
@@ -192,9 +236,9 @@
           }
         ],
         "requestBody": {
-          "description": "Updated group object",
+          "description": "Обновляемый объект группы",
           "content": {
-            "*/*": {
+            "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Group"
               }
@@ -204,12 +248,24 @@
         },
         "responses": {
           "400": {
-            "description": "Invalid group supplied",
-            "content": {}
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Group not found",
-            "content": {}
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -217,13 +273,13 @@
         "tags": [
           "group"
         ],
-        "summary": "Deletes a group",
+        "summary": "Удаление группы",
         "operationId": "deleteGroup",
         "parameters": [
           {
             "name": "groupId",
             "in": "path",
-            "description": "Group id to delete",
+            "description": "Идентификатор удаляемой группы",
             "required": true,
             "style": "simple",
             "explode": false,
@@ -235,12 +291,24 @@
         ],
         "responses": {
           "400": {
-            "description": "Invalid ID supplied",
-            "content": {}
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Group not found",
-            "content": {}
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -250,14 +318,14 @@
         "tags": [
           "user"
         ],
-        "summary": "Searches user",
-        "description": "By passing in the appropriate options, you can search for\navailable user in the system\n",
+        "summary": "Поиск пользователей",
+        "description": "Вы можете искать пользователей, указав соответствующие параметры",
         "operationId": "searchUser",
         "parameters": [
           {
             "name": "searchString",
             "in": "query",
-            "description": "pass an optional search string for looking up user",
+            "description": "Фильтр для поиска пользователей",
             "required": false,
             "style": "form",
             "explode": true,
@@ -268,7 +336,7 @@
           {
             "name": "skip",
             "in": "query",
-            "description": "number of records to skip for pagination",
+            "description": "Количество записей, которые нужно пропустить для разбивки на страницы",
             "required": false,
             "style": "form",
             "explode": true,
@@ -281,7 +349,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "maximum number of records to return",
+            "description": "Максимальное количество возвращаемых записей",
             "required": false,
             "style": "form",
             "explode": true,
@@ -295,20 +363,24 @@
         ],
         "responses": {
           "200": {
-            "description": "search results matching criteria",
+            "description": "Результаты поиска, соответствующие критериям",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/User"
-                  }
+                  "$ref": "#/components/schemas/RespUserArray"
                 }
               }
             }
           },
           "400": {
-            "description": "bad input parameter"
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -316,10 +388,10 @@
         "tags": [
           "user"
         ],
-        "summary": "Create user",
+        "summary": "Создание пользователя",
         "operationId": "createUser",
         "requestBody": {
-          "description": "Created user object",
+          "description": "Создаваемый объект пользователя",
           "content": {
             "application/json": {
               "schema": {
@@ -330,13 +402,171 @@
         },
         "responses": {
           "201": {
-            "description": "user created"
+            "description": "Пользователь создан"
           },
           "400": {
-            "description": "invalid input, object invalid"
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "an existing user already exists"
+            "description": "Пользователь уже существует"
+          }
+        }
+      }
+    },
+    "/user/{userId}": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Поиск пользователя по идентификатору",
+        "operationId": "getUserById",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "Идентификатор возвращаемого объекта пользователя",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Удачная операция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Обновление пользователя",
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "Идендентификатор обновляемого пользователя",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Обновляемый объект пользователя",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Удаление пользователя",
+        "operationId": "deleteUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "Идентификатор удаляемого пользователя",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Неправильный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -349,40 +579,133 @@
         "properties": {
           "id": {
             "type": "integer",
+            "description": "Идентификатор",
             "format": "int64"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Наименование"
           }
         }
       },
       "User": {
+        "required": [
+          "lastName",
+          "number"
+        ],
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
+            "description": "Идентификатор",
             "format": "int64"
           },
           "number": {
-            "type": "string"
+            "type": "string",
+            "description": "Номер карты"
           },
           "lastName": {
-            "type": "string"
+            "type": "string",
+            "description": "Фамилия"
           },
           "firstName": {
-            "type": "string"
+            "type": "string",
+            "description": "Имя"
           },
           "fatherName": {
-            "type": "string"
+            "type": "string",
+            "description": "Отчество"
           },
           "groupId": {
             "type": "integer",
-            "description": "Group identifier",
+            "description": "Идентификатор группы",
             "format": "int64"
           }
-        },
-        "xml": {
-          "name": "User"
+        }
+      },
+      "Error": {
+        "required": [
+          "errNo",
+          "errStr"
+        ],
+        "type": "object",
+        "properties": {
+          "errNo": {
+            "type": "string"
+          },
+          "errStr": {
+            "type": "string"
+          }
+        }
+      },
+      "RespGroup": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/Group"
+          }
+        }
+      },
+      "RespGroupArray": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Group"
+            }
+          }
+        }
+      },
+      "RespUser": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "RespUserArray": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Неправильный запрос",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Не авторизован",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Ресурс не найден",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
         }
       }
     },

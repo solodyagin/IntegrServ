@@ -34,12 +34,29 @@ var
 {$R *.res}
 
 begin
-  // Загружаем настройки
   IniFileName := ChangeFileExt(Application.ExeName, '.ini');
+  if not FileExists(IniFileName) then
+  begin
+    // Сохраняем настройки по-умолчанию
+    with TIniFile.Create(IniFileName, [ifoStripComments, ifoCaseSensitive, ifoStripQuotes]) do
+    begin
+      WriteBool('API', 'IsAuthNeeded', API_IsAuthNeeded);
+      WriteString('API', 'UserName', API_UserName);
+      WriteString('API', 'Password', API_Password);
+      WriteInteger('API', 'Port', API_Port);
+      WriteString('ODBC', 'Driver', ODBC_Driver);
+      WriteString('ODBC', 'DatabaseName', ODBC_DatabaseName);
+      WriteString('ODBC', 'UserName', ODBC_UserName);
+      WriteString('ODBC', 'Password', ODBC_Password);
+      Free;
+    end;
+  end;
+
+  // Загружаем настройки
   Writeln('Read settings from "' + IniFileName + '"');
   with TIniFile.Create(IniFileName, [ifoStripComments, ifoCaseSensitive, ifoStripQuotes]) do
   begin
-    API_Auth := ReadBool('API', 'Auth', API_Auth);
+    API_IsAuthNeeded := ReadBool('API', 'IsAuthNeeded', API_IsAuthNeeded);
     API_UserName := ReadString('API', 'UserName', API_UserName);
     API_Password := ReadString('API', 'Password', API_Password);
     API_Port := ReadInteger('API', 'Port', API_Port);
@@ -49,22 +66,6 @@ begin
     ODBC_Password := ReadString('ODBC', 'Password', ODBC_Password);
     Free;
   end;
-
-  (*// Сохраняем настройки
-  with TIniFile.Create(IniFileName, [ifoStripComments, ifoCaseSensitive, ifoStripQuotes]) do
-  begin
-    WriteBool('API', 'Auth', API_Auth);
-    WriteString('API', 'UserName', API_UserName);
-    WriteString('API', 'Password', API_Password);
-    WriteInteger('API', 'Port', API_Port);
-    WriteString('ODBC', 'Driver', ODBC_Driver);
-    WriteString('ODBC', 'DatabaseName', ODBC_DatabaseName);
-    WriteString('ODBC', 'UserName', ODBC_UserName);
-    WriteString('ODBC', 'Password', ODBC_Password);
-    Free;
-  end;*)
-
-  Writeln('API Auth: ' + BoolToStr(API_Auth, True));
 
   // Маршруты
   HTTPRouter.RegisterRoute('/catchall', rmAll, @CatchAll, True);
