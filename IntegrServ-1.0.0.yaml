@@ -1,0 +1,500 @@
+---
+openapi: 3.0.0
+info:
+  title: Gate IntegrServ
+  description: Gate Integration Server API
+  contact:
+    email: admin@tenrok.ru
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: http://localhost:9080/api/v1/
+  description: Gate IntegrServ on localhost
+security:
+- basicAuth: []
+tags:
+- name: group
+  description: Операции с группами
+- name: user
+  description: Операции с пользователями
+paths:
+  /group/getCount:
+    get:
+      tags:
+      - group
+      summary: Количество групп
+      operationId: getGroupCount
+      responses:
+        "200":
+          description: Удачная операция
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespInteger'
+  /group:
+    get:
+      tags:
+      - group
+      summary: Поиск групп
+      description: Вы можете искать группы, указав соответствующие параметры
+      operationId: searchGroup
+      parameters:
+      - name: searchString
+        in: query
+        description: Фильтр для поиска групп
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: skip
+        in: query
+        description: Количество записей, которые нужно пропустить для разбивки на страницы
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        description: Максимальное количество возвращаемых записей
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 50
+          minimum: 0
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: Результаты поиска, соответствующие критериям
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespGroupArray'
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+      - group
+      summary: Создание группы
+      operationId: createGroup
+      requestBody:
+        description: Создаваемый объект группы
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+        required: true
+      responses:
+        "201":
+          description: Группа создана
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "409":
+          description: Группа уже существует
+  /group/{groupId}:
+    get:
+      tags:
+      - group
+      summary: Поиск группы по идентификатору
+      operationId: getGroupById
+      parameters:
+      - name: groupId
+        in: path
+        description: Идентификатор возвращаемой группы
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Удачная операция
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespGroup'
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+      - group
+      summary: Обновление группы
+      operationId: updateGroup
+      parameters:
+      - name: groupId
+        in: path
+        description: Идендентификатор обновляемой группы
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: Обновляемый объект группы
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+        required: true
+      responses:
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+      - group
+      summary: Удаление группы
+      operationId: deleteGroup
+      parameters:
+      - name: groupId
+        in: path
+        description: Идентификатор удаляемой группы
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /user/getCount:
+    get:
+      tags:
+      - user
+      summary: Количество пользователей
+      operationId: getUserCount
+      responses:
+        "200":
+          description: Удачная операция
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespInteger'
+  /user:
+    get:
+      tags:
+      - user
+      summary: Поиск пользователей
+      description: Вы можете искать пользователей, указав соответствующие параметры
+      operationId: searchUser
+      parameters:
+      - name: searchString
+        in: query
+        description: Фильтр для поиска пользователей
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: skip
+        in: query
+        description: Количество записей, которые нужно пропустить для разбивки на страницы
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        description: Максимальное количество возвращаемых записей
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 50
+          minimum: 0
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: Результаты поиска, соответствующие критериям
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespUserArray'
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+      - user
+      summary: Создание пользователя
+      operationId: createUser
+      requestBody:
+        description: Создаваемый объект пользователя
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        "201":
+          description: Пользователь создан
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "409":
+          description: Пользователь уже существует
+  /user/{userId}:
+    get:
+      tags:
+      - user
+      summary: Поиск пользователя по идентификатору
+      operationId: getUserById
+      parameters:
+      - name: userId
+        in: path
+        description: Идентификатор возвращаемого объекта пользователя
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Удачная операция
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespUser'
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+      - user
+      summary: Обновление пользователя
+      operationId: updateUser
+      parameters:
+      - name: userId
+        in: path
+        description: Идендентификатор обновляемого пользователя
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        description: Обновляемый объект пользователя
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+      - user
+      summary: Удаление пользователя
+      operationId: deleteUser
+      parameters:
+      - name: userId
+        in: path
+        description: Идентификатор удаляемого пользователя
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          description: Неправильный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Идентификатор
+          format: int64
+        name:
+          type: string
+          description: Наименование
+    User:
+      required:
+      - lastName
+      - number
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Идентификатор
+          format: int64
+        number:
+          type: string
+          description: Номер карты
+        lastName:
+          type: string
+          description: Фамилия
+        firstName:
+          type: string
+          description: Имя
+        fatherName:
+          type: string
+          description: Отчество
+        groupId:
+          type: integer
+          description: Идентификатор группы
+          format: int64
+    Error:
+      required:
+      - errNo
+      - errStr
+      type: object
+      properties:
+        errNo:
+          type: string
+        errStr:
+          type: string
+    RespGroup:
+      type: object
+      properties:
+        result:
+          $ref: '#/components/schemas/Group'
+    RespGroupArray:
+      type: object
+      properties:
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Group'
+    RespUser:
+      type: object
+      properties:
+        result:
+          $ref: '#/components/schemas/User'
+    RespUserArray:
+      type: object
+      properties:
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    RespInteger:
+      type: object
+      properties:
+        result:
+          type: integer
+          format: int64
+  responses:
+    BadRequest:
+      description: Неправильный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic

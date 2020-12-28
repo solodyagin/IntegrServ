@@ -8,12 +8,12 @@ uses
   Classes, SysUtils, LazUtf8, Math, httpdefs, fpjson, jsonparser, jsonscanner, odbcconn, SQLDB, DB, uglobal;
 
 type
-  TRouteGetGroupsCount = class(TMyRouteObject)
+  TRouteGroupGetCount = class(TMyRouteObject)
   public
     procedure ExecuteRequest(ARequest: TRequest; var JSON: TJSONObject; var HttpCode: Integer); override;
   end;
 
-  TRouteGroupGetAll = class(TMyRouteObject)
+  TRouteGroupSearch = class(TMyRouteObject)
   public
     procedure ExecuteRequest(ARequest: TRequest; var JSON: TJSONObject; var HttpCode: Integer); override;
   end;
@@ -40,7 +40,7 @@ type
 
 implementation
 
-procedure TRouteGetGroupsCount.ExecuteRequest(ARequest: TRequest; var JSON: TJSONObject; var HttpCode: Integer);
+procedure TRouteGroupGetCount.ExecuteRequest(ARequest: TRequest; var JSON: TJSONObject; var HttpCode: Integer);
 begin
   Connection.Connected := True;
   Transaction.Active := True;
@@ -51,7 +51,7 @@ begin
   JSON.Add('result', Query.FieldByName('cnt').AsLargeInt);
 end;
 
-procedure TRouteGroupGetAll.ExecuteRequest(ARequest: TRequest; var JSON: TJSONObject; var HttpCode: Integer);
+procedure TRouteGroupSearch.ExecuteRequest(ARequest: TRequest; var JSON: TJSONObject; var HttpCode: Integer);
 var
   searchString: String;
   sSkip: String;
@@ -61,6 +61,7 @@ var
   sql: String;
   jArray: TJSONArray;
   jObject: TJSONObject;
+  //Fields: TStringList;
 begin
   searchString := ARequest.QueryFields.Values['searchString'];
   SetCodePage(Rawbytestring(searchString), 1251, True);
@@ -83,9 +84,13 @@ begin
   if sSkip = '' then
   begin
     if sLimit = '' then
-      sql := 'SELECT * FROM Groups WHERE name Like ''%' + searchString + '%'''
+      sql := 'SELECT *' + LineEnding +
+        'FROM Groups' + LineEnding +
+        'WHERE Name LIKE ''%' + searchString + '%'''
     else if limit > 0 then
-      sql := 'SELECT TOP ' + sLimit + ' * FROM Groups WHERE name Like ''%' + searchString + '%''';
+      sql := 'SELECT TOP ' + sLimit + ' *' + LineEnding +
+        'FROM Groups' + LineEnding +
+        'WHERE Name LIKE ''%' + searchString + '%''';
   end
   else
   begin
@@ -97,6 +102,7 @@ begin
       '  FROM (' + LineEnding +
       '    SELECT TOP ' + IntToStr(skip + limit) + ' * ' + LineEnding +
       '    FROM Groups' + LineEnding +
+      '    WHERE Name LIKE ''%' + searchString + '%''' + LineEnding +
       '    ORDER BY GroupPtr' + LineEnding +
       '  ) sub' + LineEnding +
       '  ORDER BY sub.GroupPtr DESC' + LineEnding +
@@ -108,6 +114,11 @@ begin
   Query.SQL.Text := sql;
   Query.ExecSQL;
   Query.Open;
+  // Поля таблицы
+  //Fields := TStringList.Create;
+  //Query.GetFieldNames(Fields);
+  //Writeln(Fields.CommaText);
+  //Fields.Free;
   jArray := TJSONArray.Create;
   try
     while not Query.EOF do
@@ -147,7 +158,7 @@ begin
   Connection.Connected := True;
   Transaction.Active := True;
   // Ищем группу по имени
-  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups WHERE name = :name';
+  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups WHERE Name = :name';
   Query.Params.ParseSQL(Query.SQL.Text, True);
   Query.ParamByName('name').Value := Name;
   Query.ExecSQL;
@@ -157,7 +168,7 @@ begin
     raise EAlreadyExistsException.CreateFmt('Group "%s" is already exists', [Name]);
   Query.Close;
   // Вставляем новую группу
-  Query.SQL.Text := 'INSERT INTO Groups (name) VALUES (:name)';
+  Query.SQL.Text := 'INSERT INTO Groups (Name) VALUES (:name)';
   Query.Params.ParseSQL(Query.SQL.Text, True);
   Query.ParamByName('name').Value := Name;
   Query.ExecSQL;
@@ -186,7 +197,7 @@ begin
   Query.ExecSQL;
   Query.Open;
   if Query.EOF then
-    raise EAlreadyExistsException.CreateFmt('Group "%s" is not exists', [Id]);
+    raise ENotFoundException.CreateFmt('Group "%s" is not exists', [Id]);
   Query.First;
   jObject := TJSONObject.Create;
   try

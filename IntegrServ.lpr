@@ -69,10 +69,14 @@ begin
 
   // Маршруты
   HTTPRouter.RegisterRoute('/catchall', rmAll, @CatchAll, True);
-  HTTPRouter.RegisterRoute('/api/v1/getUsersCount', rmGet, TRouteGetUsersCount); // Количество пользователей
-  HTTPRouter.RegisterRoute('/api/v1/user', rmGet, TRouteUserGetAll); // Все пользователи
-  HTTPRouter.RegisterRoute('/api/v1/getGroupsCount', rmGet, TRouteGetGroupsCount); // Количество групп
-  HTTPRouter.RegisterRoute('/api/v1/group', rmGet, TRouteGroupGetAll); // Все группы
+  HTTPRouter.RegisterRoute('/api/v1/user/getCount', rmGet, TRouteUserGetCount); // Количество пользователей
+  HTTPRouter.RegisterRoute('/api/v1/user', rmGet, TRouteUserSearch); // Поиск пользователей
+  HTTPRouter.RegisterRoute('/api/v1/user', rmPost, TRouteUserCreate); // Создание пользователя
+  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmGet, TRouteUserRead); // Получение пользователя
+  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmPut, TRouteUserUpdate); // Редактирование пользователя
+  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmDelete, TRouteUserDelete); // Удаление пользователя
+  HTTPRouter.RegisterRoute('/api/v1/group/getCount', rmGet, TRouteGroupGetCount); // Количество групп
+  HTTPRouter.RegisterRoute('/api/v1/group', rmGet, TRouteGroupSearch); // Поиск групп
   HTTPRouter.RegisterRoute('/api/v1/group', rmPost, TRouteGroupCreate); // Создание группы
   HTTPRouter.RegisterRoute('/api/v1/group/:id', rmGet, TRouteGroupRead); // Получение группы
   HTTPRouter.RegisterRoute('/api/v1/group/:id', rmPut, TRouteGroupUpdate); // Редактирование группы

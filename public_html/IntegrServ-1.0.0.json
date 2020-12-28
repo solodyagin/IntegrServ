@@ -34,6 +34,27 @@
     }
   ],
   "paths": {
+    "/group/getCount": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "summary": "Количество групп",
+        "operationId": "getGroupCount",
+        "responses": {
+          "200": {
+            "description": "Удачная операция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespInteger"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/group": {
       "get": {
         "tags": [
@@ -306,6 +327,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/getCount": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Количество пользователей",
+        "operationId": "getUserCount",
+        "responses": {
+          "200": {
+            "description": "Удачная операция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespInteger"
                 }
               }
             }
@@ -673,6 +715,15 @@
             "items": {
               "$ref": "#/components/schemas/User"
             }
+          }
+        }
+      },
+      "RespInteger": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       }
