@@ -1,4 +1,4 @@
-unit uuserroutes;
+unit uusers;
 
 {$mode objfpc}{$H+}
 
@@ -44,7 +44,7 @@ procedure TRouteUserGetCount.ExecuteRequest(ARequest: TRequest; var JSON: TJSONO
 begin
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users';
+  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users;';
   Query.ExecSQL;
   Query.Open;
   Query.First;
@@ -61,7 +61,6 @@ var
   sql: String;
   jArray: TJSONArray;
   jObject: TJSONObject;
-  //Fields: TStringList;
 begin
   searchString := ARequest.QueryFields.Values['searchString'];
   SetCodePage(Rawbytestring(searchString), 1251, True);
@@ -88,13 +87,15 @@ begin
         'FROM Users' + LineEnding +
         'WHERE LastName LIKE ''%' + searchString + '%''' + LineEnding +
         '  OR FirstName LIKE ''%' + searchString + '%''' + LineEnding +
-        '  OR FatherName LIKE ''%' + searchString + '%'''
+        '  OR FatherName LIKE ''%' + searchString + '%''' + LineEnding +
+        'ORDER BY LastName;'
     else if limit > 0 then
       sql := 'SELECT TOP ' + sLimit + ' *' + LineEnding +
         'FROM Users' + LineEnding +
         'WHERE LastName LIKE ''%' + searchString + '%''' + LineEnding +
         '  OR FirstName LIKE ''%' + searchString + '%''' + LineEnding +
-        '  OR FatherName LIKE ''%' + searchString + '%''';
+        '  OR FatherName LIKE ''%' + searchString + '%''' + LineEnding +
+        'ORDER BY LastName;';
   end
   else
   begin
@@ -109,22 +110,17 @@ begin
       '    WHERE LastName LIKE ''%' + searchString + '%''' + LineEnding +
       '      OR FirstName LIKE ''%' + searchString + '%''' + LineEnding +
       '      OR FatherName LIKE ''%' + searchString + '%''' + LineEnding +
-      '    ORDER BY UserPtr' + LineEnding +
+      '    ORDER BY LastName' + LineEnding +
       '  ) sub' + LineEnding +
-      '  ORDER BY sub.UserPtr DESC' + LineEnding +
+      '  ORDER BY sub.LastName DESC' + LineEnding +
       ') subOrdered' + LineEnding +
-      'ORDER BY UserPtr';
+      'ORDER BY LastName;';
   end;
   Connection.Connected := True;
   Transaction.Active := True;
   Query.SQL.Text := sql;
   Query.ExecSQL;
   Query.Open;
-  // Поля таблицы
-  //Fields := TStringList.Create;
-  //Query.GetFieldNames(Fields);
-  //Writeln(Fields.CommaText);
-  //Fields.Free;
   jArray := TJSONArray.Create;
   try
     while not Query.EOF do
@@ -185,9 +181,9 @@ begin
   Connection.Connected := True;
   Transaction.Active := True;
   // Проверяем используется ли карта
-  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users WHERE Number = :number';
+  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users WHERE Number = :Number;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('number').Value := number;
+  Query.ParamByName('Number').Value := number;
   Query.ExecSQL;
   Query.Open;
   Query.First;
@@ -195,14 +191,14 @@ begin
     raise EAlreadyExistsException.CreateFmt('Card number "%s" used', [number]);
   Query.Close;
   // Вставляем нового пользователя
-  Query.SQL.Text := 'INSERT INTO Users (Numer, LastName, FirstName, FatherName, GroupPtr)' + LineEnding +
-    'VALUES (:number, :lastName, :firstName, :fatherName, :groupId)';
+  Query.SQL.Text := 'INSERT INTO Users (Number, LastName, FirstName, FatherName, GroupPtr)' + LineEnding +
+    'VALUES (:Number, :LastName, :FirstName, :FatherName, :GroupPtr);';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('number').Value := number;
-  Query.ParamByName('lastName').Value := lastName;
-  Query.ParamByName('firstName').Value := firstName;
-  Query.ParamByName('fatherName').Value := fatherName;
-  Query.ParamByName('groupId').Value := groupId;
+  Query.ParamByName('Number').Value := number;
+  Query.ParamByName('LastName').Value := lastName;
+  Query.ParamByName('FirstName').Value := firstName;
+  Query.ParamByName('FatherName').Value := fatherName;
+  Query.ParamByName('GroupPtr').Value := groupId;
   Query.ExecSQL;
   // Получаем идентификатор
   //Query.SQL.Text := 'SELECT @@IDENTITY AS LastID';
@@ -223,9 +219,9 @@ begin
     raise EBadRequestException.Create('Parameter "id" is empty');
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'SELECT * FROM Users WHERE UserPtr = :id';
+  Query.SQL.Text := 'SELECT * FROM Users WHERE UserPtr = :UserPtr;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('id').Value := Id;
+  Query.ParamByName('UserPtr').Value := Id;
   Query.ExecSQL;
   Query.Open;
   if Query.EOF then
@@ -238,7 +234,7 @@ begin
     jObject.Add('lastName', Query.FieldByName('LastName').AsUTF8String); // Фамилия
     jObject.Add('firstName', Query.FieldByName('FirstName').AsUTF8String); // Имя
     jObject.Add('fatherName', Query.FieldByName('FatherName').AsUTF8String); // Отчество
-    jObject.Add('groupId', Query.FieldByName('GroupId').AsLargeInt); // Идентификатор группы
+    jObject.Add('groupId', Query.FieldByName('GroupPtr').AsLargeInt); // Идентификатор группы
     JSON.Add('result', jObject.Clone);
   finally
     FreeAndNil(jObject);
@@ -284,9 +280,9 @@ begin
   Connection.Connected := True;
   Transaction.Active := True;
   // Проверяем используется ли карта
-  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users WHERE Number = :number';
+  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Users WHERE Number = :Number;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('number').Value := number;
+  Query.ParamByName('Number').Value := number;
   Query.ExecSQL;
   Query.Open;
   Query.First;
@@ -295,19 +291,19 @@ begin
   Query.Close;
   // Обновляем пользователя
   Query.SQL.Text := 'UPDATE Users' + LineEnding +
-    'SET Number = :number,' + LineEnding +
-    '  LastName = :lastName,' + LineEnding +
-    '  FirstName = :firstName,' + LineEnding +
-    '  FatherName = :fatherName,' + LineEnding +
-    '  groupId = :groupId' + LineEnding +
-    'WHERE UserPtr = :id';
+    'SET Number = :Number,' + LineEnding +
+    '  LastName = :LastName,' + LineEnding +
+    '  FirstName = :FirstName,' + LineEnding +
+    '  FatherName = :FatherName,' + LineEnding +
+    '  GroupPtr = :GroupPtr' + LineEnding +
+    'WHERE UserPtr = :UserPtr;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('number').Value := number;
-  Query.ParamByName('lastName').Value := lastName;
-  Query.ParamByName('firstName').Value := firstName;
-  Query.ParamByName('fatherName').Value := fatherName;
-  Query.ParamByName('groupId').Value := groupId;
-  Query.ParamByName('id').Value := Id;
+  Query.ParamByName('Number').Value := number;
+  Query.ParamByName('LastName').Value := lastName;
+  Query.ParamByName('FirstName').Value := firstName;
+  Query.ParamByName('FatherName').Value := fatherName;
+  Query.ParamByName('GroupPtr').Value := groupId;
+  Query.ParamByName('UserPtr').Value := Id;
   Query.ExecSQL;
   if Query.RowsAffected = 0 then
     raise EAlreadyExistsException.CreateFmt('User "%s" is not exists', [Id]);
@@ -322,9 +318,9 @@ begin
     raise EBadRequestException.Create('Parameter "id" is empty');
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'DELETE FROM Users WHERE UserPtr = :id';
+  Query.SQL.Text := 'DELETE FROM Users WHERE UserPtr = :UserPtr;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('id').Value := Id;
+  Query.ParamByName('UserPtr').Value := Id;
   Query.ExecSQL;
   if Query.RowsAffected = 0 then
     raise ENotFoundException.CreateFmt('User "%s" is not exists', [Id]);

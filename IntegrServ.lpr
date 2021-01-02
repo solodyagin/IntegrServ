@@ -10,7 +10,8 @@ uses
   {$ENDIF}
   cmem,
 {$ENDIF}
-  SysUtils, Classes, IniFiles, fphttpapp, httpdefs, httproute, fpwebfile, uglobal, uuserroutes, ugrouproutes;
+  SysUtils, Classes, IniFiles, fphttpapp, httpdefs, httproute, fpwebfile,
+  uglobal, uusers, ugroupes, ureaders, udevices, ukeytypes;
 
 procedure CatchAll(ARequest: TRequest; AResponse: TResponse);
 begin
@@ -67,25 +68,35 @@ begin
     Free;
   end;
 
-  // Маршруты
+  // МАРШРУТЫ
+  // Запросы по-умолчанию
   HTTPRouter.RegisterRoute('/catchall', rmAll, @CatchAll, True);
-  HTTPRouter.RegisterRoute('/api/v1/user/getCount', rmGet, TRouteUserGetCount); // Количество пользователей
-  HTTPRouter.RegisterRoute('/api/v1/user', rmGet, TRouteUserSearch); // Поиск пользователей
-  HTTPRouter.RegisterRoute('/api/v1/user', rmPost, TRouteUserCreate); // Создание пользователя
-  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmGet, TRouteUserRead); // Получение пользователя
-  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmPut, TRouteUserUpdate); // Редактирование пользователя
-  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmDelete, TRouteUserDelete); // Удаление пользователя
-  HTTPRouter.RegisterRoute('/api/v1/group/getCount', rmGet, TRouteGroupGetCount); // Количество групп
-  HTTPRouter.RegisterRoute('/api/v1/group', rmGet, TRouteGroupSearch); // Поиск групп
-  HTTPRouter.RegisterRoute('/api/v1/group', rmPost, TRouteGroupCreate); // Создание группы
-  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmGet, TRouteGroupRead); // Получение группы
-  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmPut, TRouteGroupUpdate); // Редактирование группы
-  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmDelete, TRouteGroupDelete); // Удаление группы
-
-  // Статика
+  // Статическое содержимое
   HTTPRouter.RegisterRoute('/', @ReRouteRoot);
   MimeTypesFile := ExtractFileDir(Application.ExeName) + PathDelim + 'mime.types';
   RegisterFileLocation('app', 'public_html');
+  // Пользователи
+  HTTPRouter.RegisterRoute('/api/v1/user/getCount', rmGet, TRouteUserGetCount); // Количество
+  HTTPRouter.RegisterRoute('/api/v1/user', rmGet, TRouteUserSearch); // Поиск
+  HTTPRouter.RegisterRoute('/api/v1/user', rmPost, TRouteUserCreate); // Создание
+  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmGet, TRouteUserRead); // Получение
+  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmPut, TRouteUserUpdate); // Редактирование
+  HTTPRouter.RegisterRoute('/api/v1/user/:id', rmDelete, TRouteUserDelete); // Удаление
+  // Группы
+  HTTPRouter.RegisterRoute('/api/v1/group/getCount', rmGet, TRouteGroupGetCount); // Количество
+  HTTPRouter.RegisterRoute('/api/v1/group', rmGet, TRouteGroupSearch); // Поиск
+  HTTPRouter.RegisterRoute('/api/v1/group', rmPost, TRouteGroupCreate); // Создание
+  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmGet, TRouteGroupRead); // Получение
+  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmPut, TRouteGroupUpdate); // Редактирование
+  HTTPRouter.RegisterRoute('/api/v1/group/:id', rmDelete, TRouteGroupDelete); // Удаление
+  // Контроллеры
+  HTTPRouter.RegisterRoute('/api/v1/device/getCount', rmGet, TRouteDeviceGetCount); // Количество
+  HTTPRouter.RegisterRoute('/api/v1/device', rmGet, TRouteDeviceSearch); // Поиск
+  HTTPRouter.RegisterRoute('/api/v1/device/:id', rmGet, TRouteDeviceRead); // Получение
+  // Точки доступа
+  HTTPRouter.RegisterRoute('/api/v1/reader/getCount', rmGet, TRouteReaderGetCount); // Количество
+  HTTPRouter.RegisterRoute('/api/v1/reader', rmGet, TRouteReaderSearch); // Поиск
+  HTTPRouter.RegisterRoute('/api/v1/reader/:id', rmGet, TRouteReaderRead); // Получение
 
   Application.Title := 'Gate IntegrServ';
   Application.Port := API_Port;

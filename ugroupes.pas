@@ -1,4 +1,4 @@
-unit ugrouproutes;
+unit ugroupes;
 
 {$mode objfpc}{$H+}
 
@@ -44,7 +44,7 @@ procedure TRouteGroupGetCount.ExecuteRequest(ARequest: TRequest; var JSON: TJSON
 begin
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups';
+  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups;';
   Query.ExecSQL;
   Query.Open;
   Query.First;
@@ -61,7 +61,6 @@ var
   sql: String;
   jArray: TJSONArray;
   jObject: TJSONObject;
-  //Fields: TStringList;
 begin
   searchString := ARequest.QueryFields.Values['searchString'];
   SetCodePage(Rawbytestring(searchString), 1251, True);
@@ -86,11 +85,13 @@ begin
     if sLimit = '' then
       sql := 'SELECT *' + LineEnding +
         'FROM Groups' + LineEnding +
-        'WHERE Name LIKE ''%' + searchString + '%'''
+        'WHERE Name LIKE ''%' + searchString + '%''' + LineEnding +
+        'ORDER BY Name;'
     else if limit > 0 then
       sql := 'SELECT TOP ' + sLimit + ' *' + LineEnding +
         'FROM Groups' + LineEnding +
-        'WHERE Name LIKE ''%' + searchString + '%''';
+        'WHERE Name LIKE ''%' + searchString + '%''' + LineEnding +
+        'ORDER BY Name;';
   end
   else
   begin
@@ -103,22 +104,17 @@ begin
       '    SELECT TOP ' + IntToStr(skip + limit) + ' * ' + LineEnding +
       '    FROM Groups' + LineEnding +
       '    WHERE Name LIKE ''%' + searchString + '%''' + LineEnding +
-      '    ORDER BY GroupPtr' + LineEnding +
+      '    ORDER BY Name' + LineEnding +
       '  ) sub' + LineEnding +
-      '  ORDER BY sub.GroupPtr DESC' + LineEnding +
+      '  ORDER BY sub.Name DESC' + LineEnding +
       ') subOrdered' + LineEnding +
-      'ORDER BY GroupPtr';
+      'ORDER BY Name;';
   end;
   Connection.Connected := True;
   Transaction.Active := True;
   Query.SQL.Text := sql;
   Query.ExecSQL;
   Query.Open;
-  // Поля таблицы
-  //Fields := TStringList.Create;
-  //Query.GetFieldNames(Fields);
-  //Writeln(Fields.CommaText);
-  //Fields.Free;
   jArray := TJSONArray.Create;
   try
     while not Query.EOF do
@@ -158,9 +154,9 @@ begin
   Connection.Connected := True;
   Transaction.Active := True;
   // Ищем группу по имени
-  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups WHERE Name = :name';
+  Query.SQL.Text := 'SELECT COUNT(*) AS "cnt" FROM Groups WHERE Name = :Name;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('name').Value := Name;
+  Query.ParamByName('Name').Value := Name;
   Query.ExecSQL;
   Query.Open;
   Query.First;
@@ -168,9 +164,9 @@ begin
     raise EAlreadyExistsException.CreateFmt('Group "%s" is already exists', [Name]);
   Query.Close;
   // Вставляем новую группу
-  Query.SQL.Text := 'INSERT INTO Groups (Name) VALUES (:name)';
+  Query.SQL.Text := 'INSERT INTO Groups (Name) VALUES (:Name);';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('name').Value := Name;
+  Query.ParamByName('Name').Value := Name;
   Query.ExecSQL;
   // Получаем идентификатор
   //Query.SQL.Text := 'SELECT @@IDENTITY AS LastID';
@@ -191,9 +187,9 @@ begin
     raise EBadRequestException.Create('Parameter "id" is empty');
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'SELECT * FROM Groups WHERE GroupPtr = :id';
+  Query.SQL.Text := 'SELECT * FROM Groups WHERE GroupPtr = :GroupPtr;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('id').Value := Id;
+  Query.ParamByName('GroupPtr').Value := Id;
   Query.ExecSQL;
   Query.Open;
   if Query.EOF then
@@ -231,10 +227,10 @@ begin
     raise EBadRequestException.Create('Parameter "name" is empty');
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'UPDATE Groups SET Name = :name WHERE GroupPtr = :id';
+  Query.SQL.Text := 'UPDATE Groups SET Name = :Name WHERE GroupPtr = :GroupPtr;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('name').Value := Name;
-  Query.ParamByName('id').Value := Id;
+  Query.ParamByName('Name').Value := Name;
+  Query.ParamByName('GroupPtr').Value := Id;
   Query.ExecSQL;
   if Query.RowsAffected = 0 then
     raise EAlreadyExistsException.CreateFmt('Group "%s" is not exists', [Id]);
@@ -249,9 +245,9 @@ begin
     raise EBadRequestException.Create('Parameter "id" is empty');
   Connection.Connected := True;
   Transaction.Active := True;
-  Query.SQL.Text := 'DELETE FROM Groups WHERE GroupPtr = :id';
+  Query.SQL.Text := 'DELETE FROM Groups WHERE GroupPtr = :GroupPtr;';
   Query.Params.ParseSQL(Query.SQL.Text, True);
-  Query.ParamByName('id').Value := Id;
+  Query.ParamByName('GroupPtr').Value := Id;
   Query.ExecSQL;
   if Query.RowsAffected = 0 then
     raise ENotFoundException.CreateFmt('Group "%s" is not exists', [Id]);

@@ -22,7 +22,7 @@
       <AutoIncrementBuild Value="True"/>
       <MinorVersionNr Value="2"/>
       <RevisionNr Value="1"/>
-      <BuildNr Value="3"/>
+      <BuildNr Value="4"/>
       <Attributes pvaPreRelease="True"/>
       <StringTable FileDescription="IntegrServ" ProductName="IntegrServ" ProductVersion="1.0.0.0"/>
     </VersionInfo>
@@ -157,11 +157,23 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="ugrouproutes.pas"/>
+        <Filename Value="ugroupes.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uuserroutes.pas"/>
+        <Filename Value="uusers.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ureaders.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="udevices.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ukeytypes.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
